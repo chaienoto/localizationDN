@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translate Tool</title>
+</head>
+
+<body>
+    <span>Input flag json file here</span>
+    <input type="file" accept=".json" id="json" disabled style="padding : 5px"  />
+    <br>
+    <span>Input xml file here</span>
+    <input type="file" accept=".xml" id="xml" style="padding : 5px" />
+    <button class="download" hidden="true" value="uistring_VI.xml" style="margin : 5px;padding : 5px"
+        onclick="downloadXml()"> download
+        result</button>
+    <button class="download" hidden="true" style="margin : 5px;padding : 5px" onclick="downloadFlag()">
+        download Flag</button>
+
+    <div id="processDisplay"
+        style="padding-left: 10px; padding-top: 10px; overflow: auto; width: 1000px; height:800px; background-color: antiquewhite;">
+    </div>
+
+</body>
+<script src="xml2json.min.js"></script>
+<script src="localiztion.js"></script>
+
+
+</html>
