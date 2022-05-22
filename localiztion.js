@@ -1,126 +1,161 @@
 var inputJson = document.getElementById("json");
 var inputXml = document.getElementById("xml");
+var currentTrans = document.getElementById("CurrentTransIndex");
+var transStatus = document.getElementById("status");
+var fileCount = document.getElementById("FileItemCount")
 var box = document.getElementById("processDisplay");
 var btnDownload = document.getElementsByClassName("download")
-// var btnDownload = document.getElementById("download");
-var lastestTransIndex = 0;
-var targetLanguage = "&langpair=ko|vi"
-var baseUrl = "https://api.mymemory.translated.net/get?q="
-var baseUrl2 = "https://translated-mymemory---translation-memory.p.rapidapi.com/api/get?langpair="
-var targetLanguage2 = "ko|vi&q="
-// https://api.mymemory.translated.net/get?q=Hello World!&langpair=en|it
-var fileLength = 0;
-var fileReader = new FileReader();
-var x2js = new X2JS();
-
-var buffer = []
-
-var flagbuffer = []
+const baseUrl = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl='
+const sourceLang = "ko"
+const transLang = "vi"
+var fileSize = 0;
 
 var startTransIndex = 0
-var maxIndex = startTransIndex + 10
+var endTransIndex = 12
+const cacheSize = 3
+var transBuffer = []
+var flagBuffer = []
+var handleErrosBuffer = []
 
-if (inputJson) {
-    inputJson.addEventListener("change", function () {
-        showDownLoadBtn()
-        getJsonObject(inputJson, "json")
-            .then(function (file) {
-                flagbuffer = file.flag
-                console.log(flagbuffer)
-            })
-    });
-}
+var transCache = []
+var flagCache = []
+
+const x2js = new X2JS();
+const fileReader = new FileReader();
+
+// if (inputJson) {
+//     inputJson.addEventListener("change", function () {
+//         showDownLoadBtn()
+//         readInputFile(inputJson, "json")
+//             .then(function (file) {
+//                 flagBuffer = file.flag
+//                 console.log(flagBuffer)
+//             })
+//     });
+// }
+
 if (inputXml) {
     inputXml.addEventListener('change', function () {
         showDownLoadBtn()
-        getJsonObject(inputXml, "xml")
+        box.innerText = ""
+        clearCache()
+        clearBuffer()
+        readInputFile(inputXml, "xml")
             .then(function (file) {
-                // maxIndex = file.messages.message.length
-                fetchFromGoogleTranslateApi(file)
+                fileSize = file.messages.message.length
+                fileCount.innerText = fileSize
+                fetchFromGoogleTranslateApi(file.messages.message)
             })
     })
 }
-function getUrl(question) {
-    url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=' +
-        "ko" +
-        '&tl=' +
-        "vi" +
-        '&dt=t&q=' +
-        encodeURI(question.replace(/ /g, ''));
-    return url
-}
 
-async function fetchFromGoogleTranslateApi(file) {
-
-    for (let index = 0; index < maxIndex; index++) {
-        var q = file.messages.message[index].__cdata
-        var qId = file.messages.message[index]._mid
-        var url = getUrl(q)
-        const data = await fetchData(url, qId, q)
-        console.log(url)
-        getGoogleTranslateApiResult(data[0], q, index, qId)
-        lastestTransIndex = index
+async function fetchFromGoogleTranslateApi(MsgData) {
+    for (let index = 0; index < endTransIndex; index++) {
+        currentTrans.innerText = index
+        var mid = MsgData[index]._mid
+        var _cdata = MsgData[index].__cdata
+        var url = getUrl(_cdata)
+        if (_cdata == "" || _cdata == null) {
+            saveTranslatedResult(mid, _cdata, _cdata, "failed", url)
+            return
+        }
+        const transData = await fetchData(url, mid, _cdata)
+        await getGoogleTranslateApiResult(transData[0], mid, _cdata, index, url)
     }
-    showLastestTransIndex()
-
 }
 
-async function fetchData(url, qId, q) {
-    const response = await fetch(url)
-    if (!response.ok) saveTranslatedResult(qId, q, "", "failed")
+function getUrl(_cdata) {
+    return baseUrl + sourceLang + '&tl=' + transLang + '&dt=t&q=' + encodeURI(_cdata);
+}
+
+async function fetchData(url, mid, _cdata) {
+    const response = await fetch(url, { cache: "no-store" })
+    if (!response.ok) saveTranslatedResult(mid, _cdata, _cdata, "failed", url)
     return response.json()
 }
 
-
-function getGoogleTranslateApiResult(dataReponse, question, index, qId) {
+async function getGoogleTranslateApiResult(transData, mid, _cdata, index, url) {
     var raw = ""
-    dataReponse.forEach(element => {
-        raw = raw + element[0]
-    });
-    var translateText = trimTranslateText(raw)
-    saveTranslatedResult(qId, question, translateText, "ok")
+    if (transData[0] == "" || transData[0] == null) {
+        saveTranslatedResult(mid, _cdata, _cdata, "failed", url)
+        return
+    }
+    transData.forEach(element => { raw = raw + element[0] })
+    await saveTranslatedResult(mid, _cdata, trimTranslateText(raw), "ok", url)
+    return
 }
 
 function trimTranslateText(s) {
     sb = s.replace(/\\ n/g, "\n")
     s = sb.replace("% d", " %d")
     sb = s.replace("# ", "#");
-    return sb
+    s = sb.replace(/\\ N/g, "\n")
+    return s
 }
 
-function saveTranslatedResult(index, question, answer, flag) {
-    buffer.push({ _mid: index, __cdata: answer })
-    flagbuffer.push({ _mid: index, __cdata: flag })
-    showTranslateItemResult(index, question, answer, flag)
+async function saveTranslatedResult(mid, _cdata, trans, flag, url) {
+    transCache.push({ _mid: mid, __cdata: trans })
+    flagCache.push({ _mid: mid, __cdata: flag })
+    if (flag == "failed") handleErrosBuffer.push({ _mid: mid, __cdata: _cdata, url: url })
+    await checkBuffer()
+    showTranslateItemResult(mid, _cdata, trans, flag)
+}
+
+async function checkBuffer() {
+    showtransStatus(" total item in cache: " + transCache.length)
+    if (transCache.length >= cacheSize - 1) {
+        transBuffer.push(...transCache)
+        flagBuffer.push(...flagCache)
+        clearCache()
+    }
+    return
+}
+
+
+function clearCache() {
+    transCache = []
+    flagCache = []
+    showtransStatus(" total item in cache: " + transCache.length)
+}
+function clearBuffer() {
+    transBuffer = []
+    flagBuffer = []
+}
+
+function downloadEFlag(){
+    download(prepareJsonFlagFile(handleErrosBuffer), "uistring_Errors_flag_" + currentTrans.innerText + ".json")
+}
+
+function downloadFlag() {
+    download(prepareJsonFlagFile(flagBuffer), "uistring_VI_flag_" + currentTrans.innerText + ".json")
+}
+
+
+function prepareJsonFlagFile(flagfile) {
+    flagfile.sort(function (a, b) {
+        return (a._mid - b._mid);
+    })
+    return JSON.stringify({ flag: flagfile });
+}
+
+function downloadXml() {
+    download(prepareXmlFile(), "uistring_VI_" + currentTrans.innerText + ".xml")
 }
 
 function prepareXmlFile() {
-    buffer.sort(function (a, b) {
+    console.log(transBuffer)
+    transBuffer.sort(function (a, b) {
         return (a._mid - b._mid);
     })
     var baseJson = {
         "messages": {
-            "message": buffer,
+            "message": transBuffer,
             "_name": "UIString",
             "_lang": "VI_US"
         }
     }
     console.log("Repair xml file")
-    xml = x2js.json2xml_str(baseJson);
-    return xml
-}
-
-function prepareJsonFlagFile() {
-    flagbuffer.sort(function (a, b) {
-        return (a._mid - b._mid);
-    })
-    return JSON.stringify({ flag: flagbuffer });
-}
-function downloadFlag() {
-    download(prepareJsonFlagFile(), "uistring_VI_flag_" + lastestTransIndex + ".json")
-}
-function downloadXml() {
-    download(prepareXmlFile(), "uistring_VI_" + lastestTransIndex + ".xml")
+    return x2js.json2xml_str(baseJson)
 }
 
 function download(file, name) {
@@ -134,9 +169,7 @@ function download(file, name) {
     document.body.removeChild(element);
 }
 
-
-
-function getJsonObject(file, type) {
+function readInputFile(file, type) {
     return new Promise(function (resolve, reject) {
         fileReader.readAsText(file.files[0], "UTF-8")
         fileReader.onloadend = (e) => {
@@ -150,15 +183,17 @@ function getJsonObject(file, type) {
 function showDownLoadBtn() {
     btnDownload[0].style.display = 'block'
     btnDownload[1].style.display = 'block'
+    btnDownload[2].style.display = 'block'
 }
 
 function showTranslateItemResult(qId, question, answer, status) {
-    box.append("Id: " + qId + "  -  " + question + " - " + answer + " - "+ status)
+    box.append("Id: " + qId + "  -  " + question + " - " + answer + " - " + status)
     box.appendChild(document.createElement("br"))
+    box.scrollTop = box.scrollHeight;
 }
 
-function showLastestTransIndex() {
-    box.append('Lastest translate index: ' + lastestTransIndex)
-    box.appendChild(document.createElement("br"))
+function showtransStatus(message){
+    transStatus.innerText = message
 }
+
 

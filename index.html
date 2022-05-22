@@ -8,21 +8,40 @@
     <title>Translate Tool</title>
 </head>
 
-<body>
-    <span>Input flag json file here</span>
-    <input type="file" accept=".json" id="json" disabled style="padding : 5px"  />
-    <br>
-    <span>Input xml file here</span>
-    <input type="file" accept=".xml" id="xml" style="padding : 5px" />
-    <button class="download" hidden="true" value="uistring_VI.xml" style="margin : 5px;padding : 5px"
-        onclick="downloadXml()"> download
-        result</button>
-    <button class="download" hidden="true" style="margin : 5px;padding : 5px" onclick="downloadFlag()">
-        download Flag</button>
+<body style="margin: 10px auto; width: 100%; background-color:rgba(15, 15, 15, 0.904);">
+    <div style="margin: 10px auto; width: 1200px;">
+        <span style="color: white;">Input flag json file here</span>
+        <input style="color: white;" type="file" accept=".json" id="json" disabled style="padding : 5px" />
+        <br>
+        <span style="color: white;">Input xml file here</span>
+        <input style="color: white;" type="file" accept=".xml" id="xml" style="padding : 5px" />
+        <span>
+            <button class="download" hidden="true" style="margin-inline: 20px;padding : 5px" onclick="downloadXml()">
+                download
+                result</button>
+            <button class="download" hidden="true" style="margin-inline: 20px;padding : 5px" onclick="downloadFlag()">
+                download Flag</button>
+            <button class="download" hidden="true" style="margin-inline: 20px;padding : 5px" onclick="downloadEFlag()">
+                download errors Flag</button>
+        </span>
+        <p style="color: white;">Translate Process:
+            <span id="CurrentTransIndex">_</span>
+            <span>/</span>
+            <span id="FileItemCount">unknown</span>
+            <br>
+            <span style="margin-top: 20px;">Note:
+                <span id="status"></span>
+            </span>
+        </p>
 
-    <div id="processDisplay"
-        style="padding-left: 10px; padding-top: 10px; overflow: auto; width: 1000px; height:800px; background-color: antiquewhite;">
+
+
+
+        <div id="processDisplay"
+            style="padding-left: 10px; padding-top: 10px; margin-top: 10px; overflow: auto; width: 1200px; height:790px; background-color: antiquewhite;">
+        </div>
     </div>
+
 
 </body>
 <script src="xml2json.min.js"></script>
